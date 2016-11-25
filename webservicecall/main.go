@@ -1,24 +1,51 @@
 package main
 
-import "net/http"
-import "io/ioutil"
-import "encoding/xml"
-import "fmt"
-import "time"
+import (
+	"encoding/xml"
+	"fmt"
+	"io/ioutil"
+	"net/http"
+	"time"
+)
 
 func main() {
 
+	//runtime.GOMAXPROCS(4)
 	start := time.Now()
 
-	resp, _ := http.Get("http://dev.markitondemand.com/Api/v2/Quote?symbol=googl")
-	defer resp.Body.Close()
+	stockSymbols := []string{
+		"googl",
+		"msft",
+		"aapl",
+		"bbry",
+		"hpq",
+		"vz",
+		"t",
+		"tmus",
+		"s",
+	}
 
-	body, _ := ioutil.ReadAll(resp.Body)
+	numComplete := 0
 
-	quote := new(quoteResponse)
-	xml.Unmarshal(body, &quote)
+	for _, symbol := range stockSymbols {
+		go func(symbol string) {
+			resp, _ := http.Get("http://dev.markitondemand.com/Api/v2/Quote?symbol=" + symbol)
+			defer resp.Body.Close()
 
-	fmt.Printf("%s: %.2f", quote.Name, quote.LastPrice)
+			body, _ := ioutil.ReadAll(resp.Body)
+
+			quote := new(quoteResponse)
+			xml.Unmarshal(body, &quote)
+
+			fmt.Printf("\n%s: %.2f", quote.Name, quote.LastPrice)
+
+			numComplete++
+		}(symbol)
+	}
+
+	for numComplete < len(stockSymbols) {
+		time.Sleep(10 * time.Millisecond)
+	}
 
 	elapsed := time.Since(start)
 
